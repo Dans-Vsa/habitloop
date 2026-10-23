@@ -71,3 +71,12 @@ describe('loadHabits / saveHabits', () => {
     expect(saveHabits([], broken)).toBe(false)
   })
 })
+
+describe('archived flag', () => {
+  it('keeps archived: true and ignores other values', () => {
+    const base = { id: 'a', name: 'Read', color: '#5e6ad2', createdOn: '2026-10-01', completions: [] }
+    expect(sanitizeHabit({ ...base, archived: true })?.archived).toBe(true)
+    expect(sanitizeHabit({ ...base, archived: 'yes' })).not.toHaveProperty('archived')
+    expect(sanitizeHabit(base)).not.toHaveProperty('archived')
+  })
+})

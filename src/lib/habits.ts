@@ -8,6 +8,8 @@ export interface Habit {
   createdOn: DateKey
   /** Sorted, de-duplicated list of days the habit was completed. */
   completions: DateKey[]
+  /** Archived habits keep their history but are hidden from the daily list. */
+  archived?: boolean
 }
 
 export const HABIT_COLORS = ['#5e6ad2', '#27a644', '#d4a72c', '#e5484d', '#3e9fd8', '#a46ad2'] as const
@@ -92,4 +94,50 @@ export function completionRate(habit: Habit, today: DateKey, windowDays = 30): n
   const start = addDays(today, -(span - 1))
   const done = habit.completions.filter((d) => d >= start && d <= today).length
   return done / span
+}
+
+export interface HabitChanges {
+  name?: string
+  color?: string
+}
+
+/** Returns a new habit with a normalised name and/or a new color. */
+export function updateHabit(habit: Habit, changes: HabitChanges): Habit {
+  return {
+    ...habit,
+    ...(changes.name !== undefined ? { name: normalizeName(changes.name) } : {}),
+    ...(changes.color !== undefined ? { color: changes.color } : {}),
+  }
+}
+
+/** Archive or restore a habit. Unarchived habits drop the flag entirely. */
+export function setArchived(habit: Habit, archived: boolean): Habit {
+  const { archived: _previous, ...rest } = habit
+  return archived ? { ...rest, archived: true } : rest
+}
+
+export function isArchived(habit: Habit): boolean {
+  return habit.archived === true
+}
+
+/**
+ * Move a habit one step up (-1) or down (+1) among habits with the same
+ * archived state, so reordering the visible list never jumps over hidden ones.
+ * Returns the original array when the move is not possible.
+ */
+export function moveHabit(habits: Habit[], id: string, direction: -1 | 1): Habit[] {
+  const from = habits.findIndex((h) => h.id === id)
+  if (from === -1) return habits
+  const group = isArchived(habits[from])
+  let to = from + direction
+  while (to >= 0 && to < habits.length && isArchived(habits[to]) !== group) to += direction
+  if (to < 0 || to >= habits.length) return habits
+  const next = [...habits]
+  ;[next[from], next[to]] = [next[to], next[from]]
+  return next
+}
+
+/** Total number of completed days. */
+export function totalCompletions(habit: Habit): number {
+  return habit.completions.length
 }

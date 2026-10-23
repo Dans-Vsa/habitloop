@@ -3,9 +3,14 @@ import {
   completionRate,
   createHabit,
   currentStreak,
+  isArchived,
   isDone,
   longestStreak,
+  moveHabit,
+  setArchived,
   toggleCompletion,
+  totalCompletions,
+  updateHabit,
   validateHabitName,
   type Habit,
 } from './habits'
@@ -112,5 +117,59 @@ describe('completionRate', () => {
   it('caps the window and ignores days outside it', () => {
     const habit = habitWith(['2026-09-01', '2026-10-22'], '2026-08-01')
     expect(completionRate(habit, '2026-10-22', 10)).toBeCloseTo(0.1)
+  })
+})
+
+describe('updateHabit', () => {
+  it('normalises a new name and keeps history', () => {
+    const habit = habitWith(['2026-10-02'])
+    const next = updateHabit(habit, { name: '  Read   more ' })
+    expect(next).toMatchObject({ name: 'Read more', color: habit.color, completions: ['2026-10-02'] })
+    expect(habit.name).toBe('Read')
+  })
+
+  it('changes only the color when no name is given', () => {
+    expect(updateHabit(habitWith([]), { color: '#e5484d' })).toMatchObject({ name: 'Read', color: '#e5484d' })
+  })
+})
+
+describe('setArchived / isArchived', () => {
+  it('archives and restores without leaving a false flag behind', () => {
+    const habit = habitWith([])
+    const archived = setArchived(habit, true)
+    expect(isArchived(archived)).toBe(true)
+    const restored = setArchived(archived, false)
+    expect(isArchived(restored)).toBe(false)
+    expect('archived' in restored).toBe(false)
+  })
+})
+
+describe('moveHabit', () => {
+  const a = createHabit('A', '2026-10-01', '#5e6ad2', 'a')
+  const b = createHabit('B', '2026-10-01', '#5e6ad2', 'b')
+  const c = createHabit('C', '2026-10-01', '#5e6ad2', 'c')
+
+  it('swaps with the neighbour', () => {
+    expect(moveHabit([a, b, c], 'b', -1).map((h) => h.id)).toEqual(['b', 'a', 'c'])
+    expect(moveHabit([a, b, c], 'b', 1).map((h) => h.id)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('returns the same array at the edges or for unknown ids', () => {
+    const list = [a, b, c]
+    expect(moveHabit(list, 'a', -1)).toBe(list)
+    expect(moveHabit(list, 'c', 1)).toBe(list)
+    expect(moveHabit(list, 'zzz', 1)).toBe(list)
+  })
+
+  it('skips habits with a different archived state', () => {
+    const hidden = setArchived(b, true)
+    expect(moveHabit([a, hidden, c], 'c', -1).map((h) => h.id)).toEqual(['c', 'b', 'a'])
+    expect(moveHabit([a, hidden, c], 'b', 1)).toEqual([a, hidden, c])
+  })
+})
+
+describe('totalCompletions', () => {
+  it('counts completed days', () => {
+    expect(totalCompletions(habitWith(['2026-10-02', '2026-10-05']))).toBe(2)
   })
 })

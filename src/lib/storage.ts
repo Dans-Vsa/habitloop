@@ -16,7 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Validate one habit from untrusted JSON; returns `null` when unusable. */
 export function sanitizeHabit(raw: unknown): Habit | null {
   if (!isRecord(raw)) return null
-  const { id, name, color, createdOn, completions } = raw
+  const { id, name, color, createdOn, completions, archived } = raw
   if (typeof id !== 'string' || !id) return null
   if (typeof name !== 'string') return null
   const cleanName = normalizeName(name).slice(0, MAX_NAME_LENGTH)
@@ -28,6 +28,7 @@ export function sanitizeHabit(raw: unknown): Habit | null {
     color: typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color : HABIT_COLORS[0],
     createdOn,
     completions: [...new Set(days)].sort(),
+    ...(archived === true ? { archived: true } : {}),
   }
 }
 
