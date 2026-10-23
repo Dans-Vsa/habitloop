@@ -22,3 +22,23 @@ describe('habitsReducer', () => {
     expect(habitsReducer([read], { type: 'remove', id: 'r' })).toEqual([])
   })
 })
+
+describe('habitsReducer — editing', () => {
+  const read = createHabit('Read', '2026-10-01', '#5e6ad2', 'r')
+  const run = createHabit('Run', '2026-10-01', '#27a644', 'u')
+
+  it('updates name and color', () => {
+    const [next] = habitsReducer([read], { type: 'update', id: 'r', changes: { name: 'Read books', color: '#e5484d' } })
+    expect(next).toMatchObject({ name: 'Read books', color: '#e5484d' })
+  })
+
+  it('archives and restores', () => {
+    const archived = habitsReducer([read], { type: 'archive', id: 'r', archived: true })
+    expect(archived[0].archived).toBe(true)
+    expect(habitsReducer(archived, { type: 'archive', id: 'r', archived: false })[0].archived).toBeUndefined()
+  })
+
+  it('reorders', () => {
+    expect(habitsReducer([read, run], { type: 'move', id: 'u', direction: -1 }).map((h) => h.id)).toEqual(['u', 'r'])
+  })
+})

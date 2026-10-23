@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react'
-import { createHabit, toggleCompletion, type Habit } from '../lib/habits'
+import { createHabit, moveHabit, setArchived, toggleCompletion, updateHabit, type Habit, type HabitChanges } from '../lib/habits'
 import { loadHabits, saveHabits } from '../lib/storage'
 import type { DateKey } from '../lib/dates'
 
@@ -7,6 +7,9 @@ export type HabitAction =
   | { type: 'add'; name: string; color: string; today: DateKey }
   | { type: 'toggle'; id: string; day: DateKey }
   | { type: 'remove'; id: string }
+  | { type: 'update'; id: string; changes: HabitChanges }
+  | { type: 'archive'; id: string; archived: boolean }
+  | { type: 'move'; id: string; direction: -1 | 1 }
 
 export function habitsReducer(state: Habit[], action: HabitAction): Habit[] {
   switch (action.type) {
@@ -16,6 +19,12 @@ export function habitsReducer(state: Habit[], action: HabitAction): Habit[] {
       return state.map((h) => (h.id === action.id ? toggleCompletion(h, action.day) : h))
     case 'remove':
       return state.filter((h) => h.id !== action.id)
+    case 'update':
+      return state.map((h) => (h.id === action.id ? updateHabit(h, action.changes) : h))
+    case 'archive':
+      return state.map((h) => (h.id === action.id ? setArchived(h, action.archived) : h))
+    case 'move':
+      return moveHabit(state, action.id, action.direction)
   }
 }
 
