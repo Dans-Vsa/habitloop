@@ -1,5 +1,6 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { HABIT_COLORS, MAX_NAME_LENGTH, validateHabitName, type Habit } from '../lib/habits'
+import { ColorPicker } from './ColorPicker'
 
 interface Props {
   habits: Habit[]
@@ -48,22 +49,7 @@ export function HabitForm({ habits, onAdd }: Props) {
           Add habit
         </button>
       </div>
-      <fieldset className="swatches">
-        <legend className="visually-hidden">Color</legend>
-        {HABIT_COLORS.map((c) => (
-          <label key={c} className="swatch" style={{ '--swatch': c } as CSSProperties}>
-            <input
-              type="radio"
-              name="habit-color"
-              value={c}
-              checked={color === c}
-              onChange={() => setColor(c)}
-              aria-label={`Color ${c}`}
-            />
-            <span aria-hidden="true" />
-          </label>
-        ))}
-      </fieldset>
+      <ColorPicker name="habit-color" value={color} onChange={setColor} />
       {error && (
         <p id="habit-name-error" className="form-error" role="alert">
           {error}
