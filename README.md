@@ -2,7 +2,7 @@
 
 A local-first daily habit tracker built with React and TypeScript. Add the habits you want to build, check them off once a day, and watch your streaks grow — everything is stored in your browser, with no account and no server.
 
-> Status: **v0.1.0 — milestone 1 of 4.** The core tracker works; history views, stats and offline/PWA support are on the roadmap below.
+> Status: **v0.2.0 — milestone 2 of 4.** The tracker, year heatmap and habit detail view work; stats and offline/PWA support are on the roadmap below.
 
 ## Features
 
@@ -14,8 +14,11 @@ A local-first daily habit tracker built with React and TypeScript. Add the habit
 - [x] Delete with inline confirmation
 - [x] Data persisted in `localStorage`, validated on load (corrupt data never crashes the app)
 - [x] Keyboard and screen-reader friendly controls (`aria-pressed`, labels, focus rings)
-- [ ] Year heatmap and per-habit history page
-- [ ] Edit, archive and reorder habits
+- [x] GitHub-style year heatmap for all habits combined (on the home screen) and per habit
+- [x] Habit detail view: current / best streak, total check-ins, 30-day completion rate, history heatmap
+- [x] Edit a habit's name and color (same validation as when adding)
+- [x] Archive habits (history is kept, they leave the daily list) and restore them later
+- [x] Reorder habits with move up / down buttons (order is saved)
 - [ ] Stats dashboard (completion rate, weekday breakdown)
 - [ ] Weekly targets (e.g. 3× per week)
 - [ ] JSON import / export
@@ -58,20 +61,30 @@ Each completion is stored as a local calendar day (`YYYY-MM-DD`), not a timestam
 - **Current streak** counts consecutive completed days ending today. If today is not checked yet, it counts from yesterday — the streak only breaks once a full day is missed.
 - **Best streak** is the longest run of consecutive days in the whole history.
 
+## History heatmap
+
+The heatmap shows the last 53 weeks, one column per week (Sunday to Saturday), like a GitHub contribution graph. Color intensity is relative to your busiest day in that range, in four steps. Hover a square to see the date and number of check-ins. On the home screen it combines all active habits; on a habit's page it uses that habit's color. On small screens the grid scrolls sideways and opens at the most recent weeks.
+
+Click a habit's name to open its page, where you can also rename it, change its color, archive it or delete it. Archived habits are listed at the bottom of the home screen with a **Restore** button.
+
 ## Project structure
 
 ```
 habitloop/
 ├── public/favicon.svg
 ├── src/
-│   ├── App.tsx               # Page layout, today's progress
+│   ├── App.tsx               # Page layout, list/detail view switch, archived list
 │   ├── components/
+│   │   ├── ColorPicker.tsx   # Shared color swatch radio group
+│   │   ├── HabitDetail.tsx   # Habit page: stats, heatmap, edit, archive, delete
 │   │   ├── HabitForm.tsx     # Add-habit form with validation and color picker
-│   │   └── HabitRow.tsx      # One habit: today check, 7-day strip, streaks, delete
+│   │   ├── HabitRow.tsx      # One habit: today check, 7-day strip, streaks, reorder, delete
+│   │   └── Heatmap.tsx       # SVG year heatmap
 │   ├── hooks/useHabits.ts    # Reducer + localStorage persistence
 │   ├── lib/
 │   │   ├── dates.ts          # Local date keys and calendar helpers
-│   │   ├── habits.ts         # Habit model, streaks, completion rate
+│   │   ├── habits.ts         # Habit model, streaks, completion rate, edit/archive/move
+│   │   ├── heatmap.ts        # Calendar grid, per-day counts and intensity levels
 │   │   └── storage.ts        # Versioned, validated localStorage format
 │   ├── test/setup.ts         # Test environment (jest-dom, in-memory storage)
 │   └── index.css             # Design tokens and styles
@@ -87,15 +100,18 @@ Habits are saved under the `habitloop:v1` key:
 {
   "version": 1,
   "habits": [
-    { "id": "…", "name": "Read 20 pages", "color": "#5e6ad2", "createdOn": "2026-10-22", "completions": ["2026-10-22"] }
+    { "id": "…", "name": "Read 20 pages", "color": "#5e6ad2", "createdOn": "2026-10-22", "completions": ["2026-10-22"] },
+    { "id": "…", "name": "Learn Japanese", "color": "#a46ad2", "createdOn": "2026-09-01", "completions": [], "archived": true }
   ]
 }
 ```
 
+The array order is the display order. `archived` is optional and only written when `true`, so data saved by v0.1.0 loads unchanged.
+
 ## Roadmap
 
 1. **Core tracker** — habits, daily check-in, streaks, persistence ✅
-2. **History** — year heatmap, habit detail view, edit / archive / reorder
+2. **History** — year heatmap, habit detail view, edit / archive / reorder ✅
 3. **Insights** — stats dashboard, weekly targets, JSON import / export
 4. **Ship** — PWA + offline, GitHub Pages deploy, CI, v1.0.0
 
