@@ -425,14 +425,16 @@ input {
 
 .habit-row__meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   font-size: 12px;
   color: var(--ink-subtle);
 }
 
 .badge {
   padding: 2px 8px;
+  white-space: nowrap;
   background: var(--surface-2);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-pill);
@@ -732,6 +734,203 @@ input {
   color: var(--danger);
 }
 
+/* Navigation tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+  margin-left: 24px;
+}
+
+.tab {
+  padding: 6px 10px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ink-subtle);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.tab[aria-current='page'] {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+
+.habit-row__target {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.select {
+  display: block;
+  min-width: 180px;
+  height: 36px;
+  margin-bottom: 16px;
+  padding: 0 10px;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  font: inherit;
+}
+
+.select:focus {
+  outline: 2px solid var(--primary-focus);
+  outline-offset: 1px;
+}
+
+/* Insights */
+.stats--insights {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.stat__hint {
+  margin: 2px 0 0;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weekday-chart {
+  margin: 0;
+}
+
+.weekday-chart svg {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+
+.weekday-chart__track {
+  fill: var(--surface-2);
+}
+
+.weekday-chart__bar {
+  fill: color-mix(in srgb, var(--primary) 55%, var(--surface-3));
+}
+
+.weekday-chart__bar--top {
+  fill: var(--primary);
+}
+
+.weekday-chart__value {
+  font-size: 11px;
+  fill: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.weekday-chart__label {
+  font-size: 11px;
+  fill: var(--ink-subtle);
+}
+
+.habit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.habit-table th,
+.habit-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+  font-variant-numeric: tabular-nums;
+}
+
+.habit-table thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-subtle);
+}
+
+.habit-table tbody tr:last-child th,
+.habit-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.habit-table td {
+  color: var(--ink-muted);
+}
+
+.habit-table__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.habit-table__name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rate__bar {
+  width: 64px;
+  height: 6px;
+  overflow: hidden;
+  background: var(--surface-3);
+  border-radius: var(--radius-pill);
+}
+
+.rate__bar span {
+  display: block;
+  height: 100%;
+  background: var(--habit);
+  border-radius: inherit;
+}
+
+.backup__text {
+  margin: 0 0 16px;
+  color: var(--ink-subtle);
+  font-size: 14px;
+}
+
+.backup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.backup__confirm {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+}
+
+.backup__confirm p {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
 @media (max-width: 640px) {
   .content {
     padding-top: 32px;
@@ -761,8 +960,22 @@ input {
     grid-column: 3;
   }
 
-  .stats {
+  .stats,
+  .stats--insights {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tabs {
+    margin-left: 12px;
+  }
+
+  .habit-table thead th:nth-child(2),
+  .habit-table td:nth-child(2) {
+    display: none;
+  }
+
+  .rate__bar {
+    display: none;
   }
 
   .detail__header h1 {

@@ -3,16 +3,22 @@ import { longDateLabel, type DateKey } from '../lib/dates'
 import { countByDay } from '../lib/heatmap'
 import {
   completionRate,
-  currentStreak,
+  formatStreak,
   isArchived,
-  longestStreak,
   MAX_NAME_LENGTH,
+  streakInfo,
   totalCompletions,
   validateHabitName,
   type Habit,
   type HabitChanges,
 } from '../lib/habits'
+import { MAX_WEEKLY_TARGET, MIN_WEEKLY_TARGET, targetLabel } from '../lib/weekly'
 import { ColorPicker } from './ColorPicker'
+
+const TARGET_OPTIONS = Array.from(
+  { length: MAX_WEEKLY_TARGET - MIN_WEEKLY_TARGET + 1 },
+  (_, i) => MIN_WEEKLY_TARGET + i,
+)
 import { Heatmap } from './Heatmap'
 
 interface Props {
@@ -28,16 +34,19 @@ interface Props {
 export function HabitDetail({ habit, habits, today, onBack, onUpdate, onArchive, onRemove }: Props) {
   const [name, setName] = useState(habit.name)
   const [color, setColor] = useState(habit.color)
+  /** 0 = every day */
+  const [target, setTarget] = useState(habit.target ?? 0)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const counts = useMemo(() => countByDay([habit]), [habit])
   const archived = isArchived(habit)
-  const dirty = name !== habit.name || color !== habit.color
+  const dirty = name !== habit.name || color !== habit.color || target !== (habit.target ?? 0)
+  const streak = streakInfo(habit, today)
 
   const stats = [
-    { label: 'Current streak', value: `${currentStreak(habit, today)}d` },
-    { label: 'Best streak', value: `${longestStreak(habit)}d` },
+    { label: 'Current streak', value: formatStreak(streak.current, streak.unit) },
+    { label: 'Best streak', value: formatStreak(streak.best, streak.unit) },
     { label: 'Total check-ins', value: String(totalCompletions(habit)) },
     { label: 'Last 30 days', value: `${Math.round(completionRate(habit, today, 30) * 100)}%` },
   ]
@@ -49,7 +58,7 @@ export function HabitDetail({ habit, habits, today, onBack, onUpdate, onArchive,
       setError(problem)
       return
     }
-    onUpdate({ name, color })
+    onUpdate({ name, color, target: target || null })
     setError(null)
     setSaved(true)
   }
@@ -68,7 +77,9 @@ export function HabitDetail({ habit, habits, today, onBack, onUpdate, onArchive,
         <h1 id="detail-title">{habit.name}</h1>
         {archived && <span className="badge">Archived</span>}
       </header>
-      <p className="detail__since">Tracking since {longDateLabel(habit.createdOn)}</p>
+      <p className="detail__since">
+        {targetLabel(habit.target)} · tracking since {longDateLabel(habit.createdOn)}
+      </p>
 
       <dl className="stats">
         {stats.map((s) => (
@@ -113,6 +124,25 @@ export function HabitDetail({ habit, habits, today, onBack, onUpdate, onArchive,
               Save
             </button>
           </div>
+          <label className="field-label" htmlFor="edit-target">
+            Goal
+          </label>
+          <select
+            id="edit-target"
+            className="select"
+            value={target}
+            onChange={(e) => {
+              setTarget(Number(e.target.value))
+              setSaved(false)
+            }}
+          >
+            <option value={0}>{targetLabel(undefined)}</option>
+            {TARGET_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {targetLabel(n)}
+              </option>
+            ))}
+          </select>
           <ColorPicker
             name="edit-color"
             value={color}

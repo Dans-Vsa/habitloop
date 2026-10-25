@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { lastNDays, longDateLabel, weekdayLabel, type DateKey } from '../lib/dates'
-import { currentStreak, isDone, longestStreak, type Habit } from '../lib/habits'
+import { formatStreak, isDone, streakInfo, type Habit } from '../lib/habits'
+import { doneThisWeek, hasWeeklyTarget } from '../lib/weekly'
 
 interface Props {
   habit: Habit
@@ -17,8 +18,7 @@ interface Props {
 export function HabitRow({ habit, today, onToggle, onRemove, onOpen, onMove, isFirst, isLast }: Props) {
   const [confirming, setConfirming] = useState(false)
   const days = lastNDays(today, 7)
-  const streak = currentStreak(habit, today)
-  const best = longestStreak(habit)
+  const streak = streakInfo(habit, today)
   const doneToday = isDone(habit, today)
 
   return (
@@ -41,9 +41,14 @@ export function HabitRow({ habit, today, onToggle, onRemove, onOpen, onMove, isF
         </button>
         <span className="habit-row__meta">
           <span className="badge" title="Current streak">
-            {streak} day{streak === 1 ? '' : 's'} streak
+            {formatStreak(streak.current, streak.unit)} streak
           </span>
-          <span className="habit-row__best">best {best}</span>
+          <span className="habit-row__best">best {streak.best}</span>
+          {hasWeeklyTarget(habit) && (
+            <span className="habit-row__target" title="Check-ins this week / weekly target">
+              {doneThisWeek(habit, today)}/{habit.target} this week
+            </span>
+          )}
         </span>
       </div>
 

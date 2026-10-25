@@ -2,7 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from './App'
-import { serialize, STORAGE_KEY } from './lib/storage'
+import { createBackup } from './lib/backup'
+import { LEGACY_STORAGE_KEY, serialize, STORAGE_KEY } from './lib/storage'
 
 const TODAY = '2026-10-22'
 
@@ -143,9 +144,9 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Meditate' }))
 
     expect(screen.getByRole('heading', { level: 1, name: 'Meditate' })).toBeInTheDocument()
-    expect(screen.getByText('Tracking since Thursday, October 1')).toBeInTheDocument()
+    expect(screen.getByText('Every day · tracking since Thursday, October 1')).toBeInTheDocument()
     expect(screen.getByText('Total check-ins').nextSibling).toHaveTextContent('4')
-    expect(screen.getByText('Current streak').nextSibling).toHaveTextContent('4d')
+    expect(screen.getByText('Current streak').nextSibling).toHaveTextContent('4 days')
     expect(screen.getByRole('img', { name: 'Meditate history: 4 check-ins in the last 53 weeks' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'All habits' }))
@@ -207,5 +208,81 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Delete habit…' }))
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(screen.getByText('No habits yet')).toBeInTheDocument()
+  })
+
+  it('sets a weekly goal and counts the streak in weeks', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      serialize([
+        {
+          id: 'g',
+          name: 'Gym',
+          color: '#27a644',
+          createdOn: '2026-10-01',
+          // two sessions last week (Mon 10-12 .. Sun 10-18), one this week
+          completions: ['2026-10-13', '2026-10-15', '2026-10-20'],
+        },
+      ]),
+    )
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Gym' }))
+    await user.selectOptions(screen.getByLabelText('Goal'), '2× per week')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(screen.getByText(/^2× per week · tracking since/)).toBeInTheDocument()
+    expect(screen.getByText('Current streak').nextSibling).toHaveTextContent('1 week')
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').habits[0].target).toBe(2)
+
+    await user.click(screen.getByRole('button', { name: 'All habits' }))
+    expect(screen.getByText('1 week streak')).toBeInTheDocument()
+    expect(screen.getByText('1/2 this week')).toBeInTheDocument()
+  })
+
+  it('switches to the insights view and back', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    await user.type(screen.getByLabelText('Habit name'), 'Read{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Mark Read done today' }))
+
+    await user.click(screen.getByRole('button', { name: 'Insights' }))
+    expect(screen.getByRole('button', { name: 'Insights' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('heading', { level: 1, name: 'Your progress' })).toBeInTheDocument()
+    expect(within(screen.getByLabelText('Summary')).getByText('Last 7 days').nextSibling).toHaveTextContent('100%')
+
+    await user.click(screen.getByRole('button', { name: 'Read' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Read' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Today' }))
+    expect(screen.getByRole('heading', { name: '1 of 1 done' })).toBeInTheDocument()
+  })
+
+  it('imports a backup and saves it', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    await user.click(screen.getByRole('button', { name: 'Insights' }))
+    const backup = createBackup([
+      { id: 'x', name: 'Imported', color: '#a46ad2', createdOn: '2026-10-01', completions: ['2026-10-21'] },
+    ])
+    await user.upload(screen.getByLabelText('Backup file'), new File([backup], 'b.json', { type: 'application/json' }))
+    await user.click(screen.getByRole('button', { name: 'Replace all' }))
+
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').habits[0].name).toBe('Imported')
+    await user.click(screen.getByRole('button', { name: 'Today' }))
+    expect(screen.getByRole('button', { name: 'Imported' })).toBeInTheDocument()
+  })
+
+  it('migrates data saved by v0.2 under the old key', () => {
+    localStorage.setItem(
+      LEGACY_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        habits: [{ id: 'm', name: 'Old habit', color: '#5e6ad2', createdOn: '2026-10-01', completions: [TODAY] }],
+      }),
+    )
+    renderApp()
+    expect(screen.getByRole('heading', { name: '1 of 1 done' })).toBeInTheDocument()
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({ version: 2 })
   })
 })

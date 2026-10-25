@@ -3,6 +3,7 @@ import { HabitDetail } from './components/HabitDetail'
 import { HabitForm } from './components/HabitForm'
 import { HabitRow } from './components/HabitRow'
 import { Heatmap } from './components/Heatmap'
+import { Insights } from './components/Insights'
 import { useHabits } from './hooks/useHabits'
 import { longDateLabel, todayKey } from './lib/dates'
 import { isArchived, isDone } from './lib/habits'
@@ -28,6 +29,7 @@ export default function App({ storage, today: fixedToday }: AppProps) {
   const today = fixedToday ?? liveToday
   const { habits, dispatch } = useHabits(storage)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [view, setView] = useState<'today' | 'insights'>('today')
 
   const active = habits.filter((h) => !isArchived(h))
   const archived = habits.filter(isArchived)
@@ -35,15 +37,38 @@ export default function App({ storage, today: fixedToday }: AppProps) {
   const combined = useMemo(() => countByDay(habits.filter((h) => !isArchived(h))), [habits])
   const openHabit = habits.find((h) => h.id === openId)
 
+  function show(next: 'today' | 'insights') {
+    setView(next)
+    setOpenId(null)
+  }
+
   return (
     <div className="app">
       <header className="top-nav">
-        <button type="button" className="brand" onClick={() => setOpenId(null)} aria-label="habitloop home">
+        <button type="button" className="brand" onClick={() => show('today')} aria-label="habitloop home">
           <svg className="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="44 10" strokeLinecap="round" />
           </svg>
           <span>habitloop</span>
         </button>
+        <nav className="tabs" aria-label="Views">
+          <button
+            type="button"
+            className="tab"
+            aria-current={view === 'today' && !openHabit ? 'page' : undefined}
+            onClick={() => show('today')}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            className="tab"
+            aria-current={view === 'insights' && !openHabit ? 'page' : undefined}
+            onClick={() => show('insights')}
+          >
+            Insights
+          </button>
+        </nav>
         <span className="top-nav__date">{longDateLabel(today)}</span>
       </header>
 
@@ -54,13 +79,20 @@ export default function App({ storage, today: fixedToday }: AppProps) {
             habit={openHabit}
             habits={habits}
             today={today}
-            onBack={() => setOpenId(null)}
+            onBack={() => show('today')}
             onUpdate={(changes) => dispatch({ type: 'update', id: openHabit.id, changes })}
             onArchive={(value) => dispatch({ type: 'archive', id: openHabit.id, archived: value })}
             onRemove={() => {
               dispatch({ type: 'remove', id: openHabit.id })
               setOpenId(null)
             }}
+          />
+        ) : view === 'insights' ? (
+          <Insights
+            habits={habits}
+            today={today}
+            onOpen={setOpenId}
+            onReplace={(next) => dispatch({ type: 'replace', habits: next })}
           />
         ) : (
           <>
