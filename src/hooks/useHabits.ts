@@ -10,6 +10,7 @@ export type HabitAction =
   | { type: 'update'; id: string; changes: HabitChanges }
   | { type: 'archive'; id: string; archived: boolean }
   | { type: 'move'; id: string; direction: -1 | 1 }
+  | { type: 'replace'; habits: Habit[] }
 
 export function habitsReducer(state: Habit[], action: HabitAction): Habit[] {
   switch (action.type) {
@@ -25,6 +26,8 @@ export function habitsReducer(state: Habit[], action: HabitAction): Habit[] {
       return state.map((h) => (h.id === action.id ? setArchived(h, action.archived) : h))
     case 'move':
       return moveHabit(state, action.id, action.direction)
+    case 'replace':
+      return action.habits
   }
 }
 

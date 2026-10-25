@@ -41,4 +41,13 @@ describe('habitsReducer — editing', () => {
   it('reorders', () => {
     expect(habitsReducer([read, run], { type: 'move', id: 'u', direction: -1 }).map((h) => h.id)).toEqual(['u', 'r'])
   })
+
+  it('sets a weekly target through update', () => {
+    const [next] = habitsReducer([read], { type: 'update', id: 'r', changes: { target: 3 } })
+    expect(next.target).toBe(3)
+  })
+
+  it('replaces the whole list (used by import)', () => {
+    expect(habitsReducer([read], { type: 'replace', habits: [run] })).toEqual([run])
+  })
 })
