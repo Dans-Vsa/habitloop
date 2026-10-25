@@ -1,4 +1,5 @@
 import { addDays, daysBetween, isDateKey, type DateKey } from './dates'
+import { currentWeekStreak, hasWeeklyTarget, isWeeklyTarget, longestWeekStreak } from './weekly'
 
 export interface Habit {
   id: string
@@ -10,6 +11,8 @@ export interface Habit {
   completions: DateKey[]
   /** Archived habits keep their history but are hidden from the daily list. */
   archived?: boolean
+  /** Times per week (1-6). Missing means the habit is meant for every day. */
+  target?: number
 }
 
 export const HABIT_COLORS = ['#5e6ad2', '#27a644', '#d4a72c', '#e5484d', '#3e9fd8', '#a46ad2'] as const
@@ -99,15 +102,44 @@ export function completionRate(habit: Habit, today: DateKey, windowDays = 30): n
 export interface HabitChanges {
   name?: string
   color?: string
+  /** A weekly target, or `null` to go back to every day. */
+  target?: number | null
 }
 
-/** Returns a new habit with a normalised name and/or a new color. */
+/** Returns a new habit with a normalised name, a new color and/or a new target. */
 export function updateHabit(habit: Habit, changes: HabitChanges): Habit {
-  return {
+  const next: Habit = {
     ...habit,
     ...(changes.name !== undefined ? { name: normalizeName(changes.name) } : {}),
     ...(changes.color !== undefined ? { color: changes.color } : {}),
   }
+  if (changes.target === undefined) return next
+  const { target: _previous, ...rest } = next
+  return isWeeklyTarget(changes.target) ? { ...rest, target: changes.target } : rest
+}
+
+export interface StreakInfo {
+  current: number
+  best: number
+  /** Daily habits count days; habits with a weekly target count weeks. */
+  unit: 'day' | 'week'
+}
+
+/** Current and best streak in the unit that fits the habit's target. */
+export function streakInfo(habit: Habit, today: DateKey): StreakInfo {
+  if (hasWeeklyTarget(habit)) {
+    return {
+      current: currentWeekStreak(habit, habit.target, today),
+      best: longestWeekStreak(habit, habit.target),
+      unit: 'week',
+    }
+  }
+  return { current: currentStreak(habit, today), best: longestStreak(habit), unit: 'day' }
+}
+
+/** "3 days" / "1 week" */
+export function formatStreak(count: number, unit: StreakInfo['unit']): string {
+  return `${count} ${unit}${count === 1 ? '' : 's'}`
 }
 
 /** Archive or restore a habit. Unarchived habits drop the flag entirely. */
