@@ -5,11 +5,13 @@ import {
   loadHabits,
   migrate,
   parseStoredData,
+  readStoredData,
   sanitizeHabit,
   saveHabits,
   SCHEMA_VERSION,
   serialize,
   STORAGE_KEY,
+  UNREADABLE_BACKUP_KEY,
 } from './storage'
 
 describe('serialize / parseStoredData', () => {
@@ -129,5 +131,52 @@ describe('schema v2', () => {
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({ version: 1, habits: [v1Habit] }))
     localStorage.setItem(STORAGE_KEY, serialize([]))
     expect(loadHabits(localStorage)).toEqual([])
+  })
+})
+
+describe('unreadable data guard', () => {
+  function memory(entries: Record<string, string> = {}): Storage {
+    const data = new Map(Object.entries(entries))
+    return {
+      get length() {
+        return data.size
+      },
+      clear: () => data.clear(),
+      getItem: (key) => data.get(key) ?? null,
+      key: (index) => [...data.keys()][index] ?? null,
+      removeItem: (key) => void data.delete(key),
+      setItem: (key, value) => void data.set(key, String(value)),
+    }
+  }
+
+  it('tells empty storage apart from unreadable data', () => {
+    expect(readStoredData(null)).toEqual([])
+    expect(readStoredData('{oops')).toBeNull()
+    expect(readStoredData(JSON.stringify({ version: 99, habits: [] }))).toBeNull()
+  })
+
+  it('keeps a raw copy of data from a newer version before it can be overwritten', () => {
+    const newer = JSON.stringify({ version: 99, habits: [{ id: 'x' }] })
+    const storage = memory({ [STORAGE_KEY]: newer })
+    expect(loadHabits(storage)).toEqual([])
+    saveHabits([], storage)
+    expect(storage.getItem(UNREADABLE_BACKUP_KEY)).toBe(newer)
+  })
+
+  it('keeps corrupt JSON and never replaces an existing copy', () => {
+    const storage = memory({ [STORAGE_KEY]: '{oops', [UNREADABLE_BACKUP_KEY]: 'first' })
+    loadHabits(storage)
+    expect(storage.getItem(UNREADABLE_BACKUP_KEY)).toBe('first')
+
+    const fresh = memory({ [STORAGE_KEY]: '{oops' })
+    loadHabits(fresh)
+    expect(fresh.getItem(UNREADABLE_BACKUP_KEY)).toBe('{oops')
+  })
+
+  it('does not write a copy for readable or missing data', () => {
+    const storage = memory({ [STORAGE_KEY]: serialize([]) })
+    loadHabits(storage)
+    loadHabits(memory())
+    expect(storage.getItem(UNREADABLE_BACKUP_KEY)).toBeNull()
   })
 })

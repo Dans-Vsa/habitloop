@@ -6,6 +6,11 @@ export const STORAGE_KEY = 'habitloop'
 /** Where v0.1/v0.2 kept their data; read once and migrated on the next save. */
 export const LEGACY_STORAGE_KEY = 'habitloop:v1'
 export const SCHEMA_VERSION = 2
+/**
+ * Raw copy of stored data this version could not read (corrupt JSON, or data
+ * written by a newer habitloop). Kept so the next save cannot destroy it.
+ */
+export const UNREADABLE_BACKUP_KEY = 'habitloop:unreadable'
 
 export interface StoredData {
   version: typeof SCHEMA_VERSION
@@ -63,17 +68,22 @@ export function sanitizeHabits(list: unknown[]): Habit[] {
   return habits
 }
 
-/** Parse stored JSON. Corrupt or unknown data yields an empty habit list. */
-export function parseStoredData(text: string | null): Habit[] {
+/** Parse stored JSON; `null` means the text exists but cannot be read. */
+export function readStoredData(text: string | null): Habit[] | null {
   if (!text) return []
   let data: unknown
   try {
     data = JSON.parse(text)
   } catch {
-    return []
+    return null
   }
   const list = migrate(data)
-  return list ? sanitizeHabits(list) : []
+  return list ? sanitizeHabits(list) : null
+}
+
+/** Parse stored JSON. Corrupt or unknown data yields an empty habit list. */
+export function parseStoredData(text: string | null): Habit[] {
+  return readStoredData(text) ?? []
 }
 
 export function serialize(habits: Habit[]): string {
@@ -81,10 +91,20 @@ export function serialize(habits: Habit[]): string {
   return JSON.stringify(data)
 }
 
+/**
+ * Load habits. Data that cannot be read is copied to `UNREADABLE_BACKUP_KEY`
+ * (unless a copy is already there) before the app starts with an empty list,
+ * so opening an older build never silently wipes newer data.
+ */
 export function loadHabits(storage: Storage | undefined = globalThis.localStorage): Habit[] {
   try {
-    const current = storage?.getItem(STORAGE_KEY) ?? null
-    return parseStoredData(current ?? storage?.getItem(LEGACY_STORAGE_KEY) ?? null)
+    const text = storage?.getItem(STORAGE_KEY) ?? storage?.getItem(LEGACY_STORAGE_KEY) ?? null
+    const habits = readStoredData(text)
+    if (habits) return habits
+    if (text && storage && storage.getItem(UNREADABLE_BACKUP_KEY) === null) {
+      storage.setItem(UNREADABLE_BACKUP_KEY, text)
+    }
+    return []
   } catch {
     return []
   }
