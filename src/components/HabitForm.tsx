@@ -1,16 +1,23 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { HABIT_COLORS, MAX_NAME_LENGTH, validateHabitName, type Habit } from '../lib/habits'
 import { ColorPicker } from './ColorPicker'
 
 interface Props {
   habits: Habit[]
   onAdd: (name: string, color: string) => void
+  /** Focus the name field whenever this number changes (keyboard shortcut). */
+  focusSignal?: number
 }
 
-export function HabitForm({ habits, onAdd }: Props) {
+export function HabitForm({ habits, onAdd, focusSignal = 0 }: Props) {
+  const input = useRef<HTMLInputElement>(null)
   const [name, setName] = useState('')
   const [color, setColor] = useState<string>(HABIT_COLORS[habits.length % HABIT_COLORS.length])
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (focusSignal > 0) input.current?.focus()
+  }, [focusSignal])
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -32,6 +39,7 @@ export function HabitForm({ habits, onAdd }: Props) {
           Habit name
         </label>
         <input
+          ref={input}
           id="habit-name"
           className="text-input"
           placeholder="New habit, e.g. Read 20 pages"

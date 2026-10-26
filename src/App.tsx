@@ -4,10 +4,13 @@ import { HabitForm } from './components/HabitForm'
 import { HabitRow } from './components/HabitRow'
 import { Heatmap } from './components/Heatmap'
 import { Insights } from './components/Insights'
+import { ShortcutsHelp } from './components/ShortcutsHelp'
 import { useHabits } from './hooks/useHabits'
+import { useShortcuts } from './hooks/useShortcuts'
 import { longDateLabel, todayKey } from './lib/dates'
 import { isArchived, isDone } from './lib/habits'
 import { countByDay } from './lib/heatmap'
+import type { Shortcut, View } from './lib/shortcuts'
 
 /** Re-render when the local date rolls over so "today" stays correct. */
 function useToday(): string {
@@ -29,7 +32,9 @@ export default function App({ storage, today: fixedToday }: AppProps) {
   const today = fixedToday ?? liveToday
   const { habits, dispatch } = useHabits(storage)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [view, setView] = useState<'today' | 'insights'>('today')
+  const [view, setView] = useState<View>('today')
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [focusSignal, setFocusSignal] = useState(0)
 
   const active = habits.filter((h) => !isArchived(h))
   const archived = habits.filter(isArchived)
@@ -37,10 +42,37 @@ export default function App({ storage, today: fixedToday }: AppProps) {
   const combined = useMemo(() => countByDay(habits.filter((h) => !isArchived(h))), [habits])
   const openHabit = habits.find((h) => h.id === openId)
 
-  function show(next: 'today' | 'insights') {
+  function show(next: View) {
     setView(next)
     setOpenId(null)
   }
+
+  useShortcuts((shortcut: Shortcut) => {
+    if (helpOpen) {
+      if (shortcut.type === 'escape' || shortcut.type === 'help') setHelpOpen(false)
+      return
+    }
+    switch (shortcut.type) {
+      case 'help':
+        setHelpOpen(true)
+        break
+      case 'escape':
+        if (openHabit) show('today')
+        break
+      case 'view':
+        show(shortcut.view)
+        break
+      case 'new':
+        show('today')
+        setFocusSignal((n) => n + 1)
+        break
+      case 'toggle': {
+        const habit = view === 'today' && !openHabit ? active[shortcut.index] : undefined
+        if (habit) dispatch({ type: 'toggle', id: habit.id, day: today })
+        break
+      }
+    }
+  })
 
   return (
     <div className="app">
@@ -115,7 +147,7 @@ export default function App({ storage, today: fixedToday }: AppProps) {
             </section>
 
             <section className="panel">
-              <HabitForm habits={habits} onAdd={(name, color) => dispatch({ type: 'add', name, color, today })} />
+              <HabitForm habits={habits} focusSignal={focusSignal} onAdd={(name, color) => dispatch({ type: 'add', name, color, today })} />
 
               {active.length === 0 ? (
                 <div className="empty">
@@ -177,7 +209,14 @@ export default function App({ storage, today: fixedToday }: AppProps) {
         )}
       </main>
 
-      <footer className="footer">Local-first · your data never leaves this device</footer>
+      <footer className="footer">
+        Local-first · your data never leaves this device ·{' '}
+        <button type="button" className="footer__link" onClick={() => setHelpOpen(true)}>
+          Press <kbd>?</kbd> for shortcuts
+        </button>
+      </footer>
+
+      {helpOpen && <ShortcutsHelp onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }
